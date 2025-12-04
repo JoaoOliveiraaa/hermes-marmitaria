@@ -1,0 +1,171 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Hermes Marmitaria - Paleta exata da logo */
+  /* Amarelo brilhante vibrante do fundo da logo */
+  --primary: #f4d03f;
+  /* Dourado queimado/alaranjado do texto Hermes */
+  --secondary: #c78d2c;
+  /* Preto profundo do chef e texto */
+  --accent: #1a1a1a;
+  /* Creme/bege para fundos neutros */
+  --background: #f9f7f3;
+  --foreground: #1a1a1a;
+  --card: #fefdfb;
+  --card-foreground: #1a1a1a;
+  --popover: #fefdfb;
+  --popover-foreground: #1a1a1a;
+  --primary-foreground: #1a1a1a;
+  --secondary-foreground: #fefdfb;
+  --muted: #e8e4dc;
+  --muted-foreground: #7f7a72;
+  --destructive: #dc2626;
+  --destructive-foreground: #fefdfb;
+  --border: #e8e4dc;
+  --input: #fefdfb;
+  --ring: #f4d03f;
+  --chart-1: #f4d03f;
+  --chart-2: #c78d2c;
+  --chart-3: #1a1a1a;
+  --chart-4: #d4af37;
+  --chart-5: #f9d57e;
+  --radius: 0.5rem;
+  --sidebar: #f9f7f3;
+  --sidebar-foreground: #1a1a1a;
+  --sidebar-primary: #f4d03f;
+  --sidebar-primary-foreground: #1a1a1a;
+  --sidebar-accent: #c78d2c;
+  --sidebar-accent-foreground: #fefdfb;
+  --sidebar-border: #e8e4dc;
+  --sidebar-ring: #f4d03f;
+}
+
+.dark {
+  --primary: #f4d03f;
+  --secondary: #c78d2c;
+  --accent: #f9f7f3;
+  --background: #1a1a1a;
+  --foreground: #f9f7f3;
+  --card: #2a2725;
+  --card-foreground: #f9f7f3;
+  --popover: #2a2725;
+  --popover-foreground: #f9f7f3;
+  --primary-foreground: #1a1a1a;
+  --secondary-foreground: #f9f7f3;
+  --muted: #3a3530;
+  --muted-foreground: #b8b3a8;
+  --destructive: #ef4444;
+  --destructive-foreground: #1a1a1a;
+  --border: #3a3530;
+  --input: #3a3530;
+  --ring: #f4d03f;
+  --chart-1: #f4d03f;
+  --chart-2: #c78d2c;
+  --chart-3: #f9f7f3;
+  --chart-4: #d4af37;
+  --chart-5: #f9d57e;
+  --sidebar: #1a1a1a;
+  --sidebar-foreground: #f9f7f3;
+  --sidebar-primary: #f4d03f;
+  --sidebar-primary-foreground: #1a1a1a;
+  --sidebar-accent: #c78d2c;
+  --sidebar-accent-foreground: #f9f7f3;
+  --sidebar-border: #3a3530;
+  --sidebar-ring: #f4d03f;
+}
+
+@theme inline {
+  --font-sans: "Geist", "Geist Fallback";
+  --font-mono: "Geist Mono", "Geist Mono Fallback";
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUpFade {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.6s ease-out;
+}
+
+.animate-slide-up {
+  animation: slideUpFade 0.6s ease-out;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  
+  html {
+    overflow-x: hidden;
+    width: 100%;
+  }
+  
+  body {
+    @apply bg-background text-foreground;
+    overflow-x: hidden;
+    width: 100%;
+    max-width: 100vw;
+  }
+  
+  /* Prevenir overflow horizontal em todos os elementos */
+  main, section, div {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+}
