@@ -36,7 +36,7 @@ export interface Pedido {
   nomeCliente: string
   telefoneCliente: string
   dataPedido: string
-  status: "pendente" | "preparando" | "pronto" | "entregue"
+  status: "pendente" | "preparando" | "pronto" | "entregue" | "entrega" | "cancelado"
   whatsappEnviado?: boolean
 }
 

@@ -1,18 +1,40 @@
 import { createClient } from "./client"
 
+// Tipos auxiliares
+interface PratoData {
+  nome: string
+  descricao?: string | null
+  imagem_url?: string | null
+  categoria?: "prato" | "bebida" | "doce"
+  tamanhos?: Array<{ id?: string; nome: string; preco: number }>
+  preco?: number
+}
+
+interface PratoUpdate {
+  nome?: string
+  descricao?: string | null
+  imagem_url?: string | null
+  categoria?: "prato" | "bebida" | "doce"
+  tamanhos?: Array<{ id?: string; nome: string; preco: number }>
+  preco?: number
+}
+
 // Pratos
 export async function getPratos() {
   const supabase = createClient()
   const { data, error } = await supabase.from("pratos").select("*")
-  if (error) console.error("[v0] Erro ao buscar pratos:", error)
+  if (error) {
+    console.error("[v0] Erro ao buscar pratos:", error)
+    return []
+  }
   return data || []
 }
 
-export async function createPrato(prato: any) {
+export async function createPrato(prato: PratoData) {
   const supabase = createClient()
   
   // Preparar dados para inserção (remover campos que não existem na tabela)
-  const pratoData: any = {
+  const pratoData: Record<string, unknown> = {
     nome: prato.nome,
     descricao: prato.descricao || null,
     imagem_url: prato.imagem_url || null,
@@ -40,14 +62,17 @@ export async function createPrato(prato: any) {
     throw new Error(error.message || "Erro ao criar prato no banco de dados")
   }
   
-  return data?.[0]
+  return data?.[0] || null
 }
 
-export async function updatePrato(id: string, updates: any) {
+export async function updatePrato(id: string, updates: PratoUpdate) {
   const supabase = createClient()
   const { data, error } = await supabase.from("pratos").update(updates).eq("id", id).select()
-  if (error) console.error("[v0] Erro ao atualizar prato:", error)
-  return data?.[0]
+  if (error) {
+    console.error("[v0] Erro ao atualizar prato:", error)
+    return null
+  }
+  return data?.[0] || null
 }
 
 export async function deletePrato(id: string) {
@@ -65,11 +90,14 @@ export async function getAdicionais() {
   return data || []
 }
 
-export async function createAdicional(adicional: any) {
+export async function createAdicional(adicional: { nome: string; preco: number }) {
   const supabase = createClient()
   const { data, error } = await supabase.from("adicionais").insert([adicional]).select()
-  if (error) console.error("[v0] Erro ao criar adicional:", error)
-  return data?.[0]
+  if (error) {
+    console.error("[v0] Erro ao criar adicional:", error)
+    return null
+  }
+  return data?.[0] || null
 }
 
 // Clientes
@@ -78,8 +106,11 @@ export async function createCliente(nome: string, telefone: string) {
   // Normalizar telefone: remover todos os caracteres não numéricos
   const telefoneNormalizado = telefone.replace(/\D/g, "")
   const { data, error } = await supabase.from("clientes").insert([{ nome, telefone: telefoneNormalizado }]).select()
-  if (error) console.error("[v0] Erro ao criar cliente:", error)
-  return data?.[0]
+  if (error) {
+    console.error("[v0] Erro ao criar cliente:", error)
+    return null
+  }
+  return data?.[0] || null
 }
 
 export async function getClientePorTelefone(telefone: string) {
@@ -87,16 +118,22 @@ export async function getClientePorTelefone(telefone: string) {
   // Normalizar telefone: remover todos os caracteres não numéricos
   const telefoneNormalizado = telefone.replace(/\D/g, "")
   const { data, error } = await supabase.from("clientes").select("*").eq("telefone", telefoneNormalizado).single()
-  if (error && error.code !== "PGRST116") console.error("[v0] Erro ao buscar cliente:", error)
-  return data
+  if (error && error.code !== "PGRST116") {
+    console.error("[v0] Erro ao buscar cliente:", error)
+    return null
+  }
+  return data || null
 }
 
 // Pedidos
-export async function createPedido(pedido: any) {
+export async function createPedido(pedido: Record<string, unknown>) {
   const supabase = createClient()
   const { data, error } = await supabase.from("pedidos").insert([pedido]).select()
-  if (error) console.error("[v0] Erro ao criar pedido:", error)
-  return data?.[0]
+  if (error) {
+    console.error("[v0] Erro ao criar pedido:", error)
+    return null
+  }
+  return data?.[0] || null
 }
 
 export async function getPedidos() {
@@ -140,8 +177,11 @@ export async function updatePedidoStatus(id: string, status: string) {
     .update({ status, updated_at: new Date().toISOString() })
     .eq("id", id)
     .select()
-  if (error) console.error("[v0] Erro ao atualizar status do pedido:", error)
-  return data?.[0]
+  if (error) {
+    console.error("[v0] Erro ao atualizar status do pedido:", error)
+    return null
+  }
+  return data?.[0] || null
 }
 
 // Fretes
@@ -159,8 +199,11 @@ export async function updateFrete(id: string, valor: number) {
     .update({ valor, updated_at: new Date().toISOString() })
     .eq("id", id)
     .select()
-  if (error) console.error("[v0] Erro ao atualizar frete:", error)
-  return data?.[0]
+  if (error) {
+    console.error("[v0] Erro ao atualizar frete:", error)
+    return null
+  }
+  return data?.[0] || null
 }
 
 // Horários
@@ -178,8 +221,11 @@ export async function updateHorario(id: string, abertura: string, fechamento: st
     .update({ abertura, fechamento, aberto, updated_at: new Date().toISOString() })
     .eq("id", id)
     .select()
-  if (error) console.error("[v0] Erro ao atualizar horário:", error)
-  return data?.[0]
+  if (error) {
+    console.error("[v0] Erro ao atualizar horário:", error)
+    return null
+  }
+  return data?.[0] || null
 }
 
 // Prato Dia
@@ -228,6 +274,9 @@ export async function atualizarStatusPratoDia(prato_id: string, dia: string, ati
     .eq("prato_id", prato_id)
     .eq("dia_semana", dia)
     .select()
-  if (error) console.error("[v0] Erro ao atualizar status prato-dia:", error)
-  return data?.[0]
+  if (error) {
+    console.error("[v0] Erro ao atualizar status prato-dia:", error)
+    return null
+  }
+  return data?.[0] || null
 }

@@ -4,11 +4,15 @@ import { ShoppingCart, Menu, X } from "lucide-react"
 import Link from "next/link"
 import { useState } from "react"
 import Image from "next/image"
+import { usePathname } from "next/navigation"
 import { useCart } from "@/context/cart-context"
 
 export function Header() {
   const [isOpen, setIsOpen] = useState(false)
   const { itemCount } = useCart()
+  const pathname = usePathname()
+
+  const isAdmin = pathname.startsWith("/admin")
 
   return (
     <header className="sticky top-0 z-50 w-full overflow-hidden max-w-full">
@@ -42,43 +46,47 @@ export function Header() {
           </Link>
 
           {/* Navigation - Center */}
-          <nav className="hidden md:flex items-center gap-6 mx-auto">
-            <Link
-              href="/cardapio"
-              className="text-sm font-medium text-foreground hover:text-primary transition-colors whitespace-nowrap"
-            >
-              Cardápio
-            </Link>
-            <Link
-              href="#horarios"
-              className="text-sm font-medium text-foreground hover:text-primary transition-colors whitespace-nowrap"
-            >
-              Horários
-            </Link>
-            <Link
-              href="#contato"
-              className="text-sm font-medium text-foreground hover:text-primary transition-colors whitespace-nowrap"
-            >
-              Contato
-            </Link>
-            <Link
-              href="/acompanhar-pedido"
-              className="text-sm font-medium text-foreground hover:text-primary transition-colors whitespace-nowrap"
-            >
-              Acompanhar meu pedido
-            </Link>
-          </nav>
+          {!isAdmin && (
+            <nav className="hidden md:flex items-center gap-6 mx-auto">
+              <Link
+                href="/cardapio"
+                className="text-sm font-medium text-foreground hover:text-primary transition-colors whitespace-nowrap"
+              >
+                Cardápio
+              </Link>
+              <Link
+                href="#horarios"
+                className="text-sm font-medium text-foreground hover:text-primary transition-colors whitespace-nowrap"
+              >
+                Horários
+              </Link>
+              <Link
+                href="#contato"
+                className="text-sm font-medium text-foreground hover:text-primary transition-colors whitespace-nowrap"
+              >
+                Contato
+              </Link>
+              <Link
+                href="/acompanhar-pedido"
+                className="text-sm font-medium text-foreground hover:text-primary transition-colors whitespace-nowrap"
+              >
+                Acompanhar meu pedido
+              </Link>
+            </nav>
+          )}
 
           {/* Cart - Right */}
           <div className="flex items-center gap-3 sm:gap-4 flex-shrink-0 absolute right-4 sm:right-6 lg:right-8">
-            <Link href="/carrinho" className="relative p-2 hover:bg-primary/10 rounded-lg transition-colors">
-              <ShoppingCart size={20} className="text-foreground" />
-              {itemCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-secondary text-white text-xs font-bold rounded-full flex items-center justify-center">
-                  {itemCount}
-                </span>
-              )}
-            </Link>
+            {!isAdmin && (
+              <Link href="/carrinho" className="relative p-2 hover:bg-primary/10 rounded-lg transition-colors">
+                <ShoppingCart size={20} className="text-foreground" />
+                {itemCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-secondary text-white text-xs font-bold rounded-full flex items-center justify-center">
+                    {itemCount}
+                  </span>
+                )}
+              </Link>
+            )}
 
             <button
               onClick={() => setIsOpen(!isOpen)}
@@ -89,7 +97,7 @@ export function Header() {
           </div>
         </div>
 
-        {isOpen && (
+        {isOpen && !isAdmin && (
           <nav className="md:hidden py-4 border-t border-border space-y-2 overflow-x-hidden">
             <Link
               href="/cardapio"

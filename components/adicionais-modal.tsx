@@ -152,28 +152,30 @@ export function AdicionaisModal({ prato, isOpen, onClose }: AdicionaisModalProps
             </div>
           </div>
 
-          {/* Adicionais */}
-          <div className="space-y-3">
-            <label className="text-sm font-medium text-foreground">Adicionais</label>
-            <div className="space-y-2 max-h-32 overflow-y-auto">
-              {adicionaisDisponiveis.map((adicional) => (
-                <div
-                  key={adicional.id}
-                  className="flex items-center gap-3 p-2 rounded hover:bg-secondary transition-colors"
-                >
-                  <Checkbox
-                    id={`adicional-${adicional.id}`}
-                    checked={selectedAdicionais.some((a) => a.id === adicional.id)}
-                    onCheckedChange={() => handleToggleAdicional(adicional)}
-                  />
-                  <label htmlFor={`adicional-${adicional.id}`} className="flex-1 text-sm cursor-pointer">
-                    {adicional.nome}
-                  </label>
-                  <span className="text-sm text-primary font-medium">+R$ {adicional.preco.toFixed(2)}</span>
-                </div>
-              ))}
+          {/* Adicionais - apenas para pratos */}
+          {prato.categoria === "prato" && (
+            <div className="space-y-3">
+              <label className="text-sm font-medium text-foreground">Adicionais</label>
+              <div className="space-y-2 max-h-32 overflow-y-auto">
+                {adicionaisDisponiveis.map((adicional) => (
+                  <div
+                    key={adicional.id}
+                    className="flex items-center gap-3 p-2 rounded hover:bg-secondary transition-colors"
+                  >
+                    <Checkbox
+                      id={`adicional-${adicional.id}`}
+                      checked={selectedAdicionais.some((a) => a.id === adicional.id)}
+                      onCheckedChange={() => handleToggleAdicional(adicional)}
+                    />
+                    <label htmlFor={`adicional-${adicional.id}`} className="flex-1 text-sm cursor-pointer">
+                      {adicional.nome}
+                    </label>
+                    <span className="text-sm text-primary font-medium">+R$ {adicional.preco.toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Observações */}
           <div className="space-y-2">

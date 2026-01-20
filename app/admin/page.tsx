@@ -26,10 +26,20 @@ import {
 import { uploadImageToBlob } from "@/lib/supabase/blob-upload"
 import type { Prato, Pedido, Tamanho } from "@/types"
 
-const ADMIN_CREDENTIALS = {
-  email: "admin@hermesmarmitaria.com",
-  senha: "hermes2025",
-}
+type AdminRole = "owner" | "staff"
+
+const ADMIN_USERS: { email: string; senha: string; role: AdminRole }[] = [
+  {
+    email: "admin@hermesmarmitaria.com",
+    senha: "hermes2025",
+    role: "owner",
+  },
+  {
+    email: "funcionario@hermesmarmitaria.com",
+    senha: "hermes2025",
+    role: "staff",
+  },
+]
 
 const DIAS_SEMANA = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"]
 
@@ -39,6 +49,7 @@ export default function AdminPage() {
   const [senha, setSenha] = useState("")
   const [loading, setLoading] = useState(true)
   const [loginAttempted, setLoginAttempted] = useState(false)
+  const [role, setRole] = useState<AdminRole | null>(null)
 
   const [pratos, setPratos] = useState<Prato[]>([])
   const [pedidos, setPedidos] = useState<Pedido[]>([])
@@ -58,7 +69,22 @@ export default function AdminPage() {
     diasSelecionados: [] as string[],
   })
 
+  const [activeTab, setActiveTab] = useState<"pedidos" | "cardapio" | "bebidas-doces" | "dias" | "financeiro">("pedidos")
+  const [filtroPeriodo, setFiltroPeriodo] = useState<"todos" | "hoje" | "7dias">("todos")
+  const [filtroPagamento, setFiltroPagamento] = useState<string>("todos")
+
   useEffect(() => {
+    // Recuperar sessão do admin, se existir
+    const storedAuth = localStorage.getItem("hermesAdminAuth")
+    const storedEmail = localStorage.getItem("hermesAdminEmail")
+    const storedRole = localStorage.getItem("hermesAdminRole") as AdminRole | null
+
+    if (storedAuth === "true" && storedEmail && storedRole) {
+      setIsAuthenticated(true)
+      setEmail(storedEmail)
+      setRole(storedRole)
+    }
+
     setLoading(false)
   }, [])
 
@@ -120,20 +146,29 @@ export default function AdminPage() {
     e.preventDefault()
     setLoginAttempted(true)
 
-    if (email === ADMIN_CREDENTIALS.email && senha === ADMIN_CREDENTIALS.senha) {
-      setIsAuthenticated(true)
-      localStorage.setItem("hermesAdminAuth", "true")
-    } else {
+    const foundUser = ADMIN_USERS.find((user) => user.email === email && user.senha === senha)
+
+    if (!foundUser) {
       alert("Email ou senha incorretos")
       setSenha("")
+      return
     }
+
+    setIsAuthenticated(true)
+    setRole(foundUser.role)
+    localStorage.setItem("hermesAdminAuth", "true")
+    localStorage.setItem("hermesAdminEmail", foundUser.email)
+    localStorage.setItem("hermesAdminRole", foundUser.role)
   }
 
   const handleLogout = () => {
     setIsAuthenticated(false)
     localStorage.removeItem("hermesAdminAuth")
+    localStorage.removeItem("hermesAdminEmail")
+    localStorage.removeItem("hermesAdminRole")
     setEmail("")
     setSenha("")
+    setRole(null)
     setLoginAttempted(false)
     setPratos([])
     setPedidos([])
@@ -323,19 +358,52 @@ export default function AdminPage() {
           <div className="flex justify-between items-center mb-8">
             <div>
               <h1 className="text-4xl font-light text-foreground">Painel Administrativo</h1>
-              <p className="text-foreground/60 text-sm mt-1">Bem-vindo, {email.split("@")[0]}</p>
+              <p className="text-foreground/60 text-sm mt-1">
+                Bem-vindo, {email.split("@")[0]}{" "}
+                {role === "owner" ? "(Dono)" : "(Funcionário)"}
+              </p>
             </div>
             <Button variant="outline" onClick={handleLogout} className="gap-2 bg-transparent">
               <LogOut size={16} /> Sair
             </Button>
           </div>
 
-          <Tabs defaultValue="pedidos" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-4">
+          <Tabs
+            value={activeTab}
+            onValueChange={(value) => {
+              const tab = value as typeof activeTab
+              setActiveTab(tab)
+
+              // Ajustar estado padrão do formulário ao trocar de aba
+              if (tab === "cardapio") {
+                setNewPrato({
+                  nome: "",
+                  descricao: "",
+                  imagem_url: "",
+                  categoria: "prato",
+                  tamanhos: [{ id: `tamanho-${Date.now()}-0`, nome: "M", preco: 0 }],
+                  preco: 0,
+                  diasSelecionados: [],
+                })
+              }
+
+              if (tab === "bebidas-doces") {
+                setNewPrato((prev) => ({
+                  ...prev,
+                  categoria: "bebida",
+                  tamanhos: [],
+                  diasSelecionados: [],
+                }))
+              }
+            }}
+            className="space-y-6"
+          >
+            <TabsList className={`grid w-full ${role === "owner" ? "grid-cols-5" : "grid-cols-4"}`}>
               <TabsTrigger value="pedidos">Pedidos ({pedidos.length})</TabsTrigger>
               <TabsTrigger value="cardapio">Pratos ({pratos.filter(p => p.categoria === "prato").length})</TabsTrigger>
               <TabsTrigger value="bebidas-doces">Bebidas & Doces ({pratos.filter(p => p.categoria === "bebida" || p.categoria === "doce").length})</TabsTrigger>
               <TabsTrigger value="dias">Pratos por Dia</TabsTrigger>
+              {role === "owner" && <TabsTrigger value="financeiro">Financeiro</TabsTrigger>}
             </TabsList>
 
             {/* ABA PEDIDOS */}
@@ -602,6 +670,73 @@ export default function AdminPage() {
                   </div>
                 </CardContent>
               </Card>
+
+              {editingPrato && editingPrato.categoria === "prato" && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Editar Prato</CardTitle>
+                    <CardDescription>Altere as informações e salve para atualizar o cardápio</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <Input
+                      placeholder="Nome"
+                      value={editingPrato.nome}
+                      onChange={(e) =>
+                        setEditingPrato((prev) => (prev ? { ...prev, nome: e.target.value } : prev))
+                      }
+                    />
+                    <Input
+                      placeholder="Descrição"
+                      value={editingPrato.descricao || ""}
+                      onChange={(e) =>
+                        setEditingPrato((prev) => (prev ? { ...prev, descricao: e.target.value } : prev))
+                      }
+                    />
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Tamanhos</label>
+                      {(editingPrato.tamanhos || []).map((tamanho, idx) => (
+                        <div key={tamanho.id || idx} className="flex gap-2">
+                          <Input
+                            placeholder="Tamanho (P, M, G)"
+                            value={tamanho.nome}
+                            onChange={(e) => {
+                              setEditingPrato((prev) => {
+                                if (!prev) return prev
+                                const updated = [...(prev.tamanhos || [])]
+                                updated[idx] = { ...updated[idx], nome: e.target.value }
+                                return { ...prev, tamanhos: updated }
+                              })
+                            }}
+                          />
+                          <Input
+                            type="number"
+                            step="0.01"
+                            placeholder="Preço"
+                            value={tamanho.preco}
+                            onChange={(e) => {
+                              const value = Number.parseFloat(e.target.value) || 0
+                              setEditingPrato((prev) => {
+                                if (!prev) return prev
+                                const updated = [...(prev.tamanhos || [])]
+                                updated[idx] = { ...updated[idx], preco: value }
+                                return { ...prev, tamanhos: updated }
+                              })
+                            }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="flex gap-2 justify-end">
+                      <Button variant="outline" onClick={() => setEditingPrato(null)}>
+                        Cancelar
+                      </Button>
+                      <Button onClick={handleUpdatePrato}>Salvar alterações</Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
 
             {/* ABA BEBIDAS E DOCES */}
@@ -721,6 +856,51 @@ export default function AdminPage() {
                   </div>
                 </CardContent>
               </Card>
+
+              {editingPrato && (editingPrato.categoria === "bebida" || editingPrato.categoria === "doce") && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Editar {editingPrato.categoria === "bebida" ? "Bebida" : "Doce"}</CardTitle>
+                    <CardDescription>Atualize nome, descrição e preço</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <Input
+                      placeholder="Nome"
+                      value={editingPrato.nome}
+                      onChange={(e) =>
+                        setEditingPrato((prev) => (prev ? { ...prev, nome: e.target.value } : prev))
+                      }
+                    />
+                    <Input
+                      placeholder="Descrição"
+                      value={editingPrato.descricao || ""}
+                      onChange={(e) =>
+                        setEditingPrato((prev) => (prev ? { ...prev, descricao: e.target.value } : prev))
+                      }
+                    />
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Preço</label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="Preço (R$)"
+                        value={editingPrato.preco || 0}
+                        onChange={(e) => {
+                          const value = Number.parseFloat(e.target.value) || 0
+                          setEditingPrato((prev) => (prev ? { ...prev, preco: value } : prev))
+                        }}
+                      />
+                    </div>
+
+                    <div className="flex gap-2 justify-end">
+                      <Button variant="outline" onClick={() => setEditingPrato(null)}>
+                        Cancelar
+                      </Button>
+                      <Button onClick={handleUpdatePrato}>Salvar alterações</Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
 
             <TabsContent value="dias" className="space-y-4">
@@ -763,6 +943,186 @@ export default function AdminPage() {
                 </CardContent>
               </Card>
             </TabsContent>
+
+            {/* ABA FINANCEIRO - visível apenas para o dono */}
+            {role === "owner" && (
+              <TabsContent value="financeiro" className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Resumo Financeiro</CardTitle>
+                    <CardDescription>Visão geral dos pedidos e faturamento</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {pedidos.length === 0 ? (
+                      <p className="text-foreground/60">Nenhum pedido registrado ainda.</p>
+                    ) : (
+                      <>
+                        {/* Filtros */}
+                        <div className="flex flex-col sm:flex-row gap-4 mb-4">
+                          <div className="flex flex-col gap-1">
+                            <span className="text-xs font-medium text-foreground/70">Período</span>
+                            <select
+                              value={filtroPeriodo}
+                              onChange={(e) => setFiltroPeriodo(e.target.value as "todos" | "hoje" | "7dias")}
+                              className="px-3 py-2 border border-border rounded-md bg-background text-sm"
+                            >
+                              <option value="todos">Todos</option>
+                              <option value="hoje">Hoje</option>
+                              <option value="7dias">Últimos 7 dias</option>
+                            </select>
+                          </div>
+
+                          <div className="flex flex-col gap-1">
+                            <span className="text-xs font-medium text-foreground/70">Forma de pagamento</span>
+                            <select
+                              value={filtroPagamento}
+                              onChange={(e) => setFiltroPagamento(e.target.value)}
+                              className="px-3 py-2 border border-border rounded-md bg-background text-sm"
+                            >
+                              <option value="todos">Todas</option>
+                              {Array.from(
+                                new Set(
+                                  pedidos
+                                    .map((p) => p.tipoPagamento)
+                                    .filter((tp) => typeof tp === "string" && tp.trim().length > 0),
+                                ),
+                              ).map((tp) => (
+                                <option key={tp} value={tp}>
+                                  {tp}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+
+                        {(() => {
+                          const agora = new Date()
+
+                          const pedidosFiltrados = pedidos.filter((p) => {
+                            // Filtro pagamento
+                            if (filtroPagamento !== "todos" && p.tipoPagamento !== filtroPagamento) {
+                              return false
+                            }
+
+                            // Filtro período (usa created_at se existir, senão não filtra por data)
+                            if (filtroPeriodo === "todos") return true
+
+                            const dataStr = (p as any).created_at as string | undefined
+                            if (!dataStr) return true
+
+                            const dataPedido = new Date(dataStr)
+                            const diffMs = agora.getTime() - dataPedido.getTime()
+                            const diffDias = diffMs / (1000 * 60 * 60 * 24)
+
+                            if (filtroPeriodo === "hoje") {
+                              return dataPedido.toDateString() === agora.toDateString()
+                            }
+
+                            if (filtroPeriodo === "7dias") {
+                              return diffDias <= 7
+                            }
+
+                            return true
+                          })
+
+                          return (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                              {/* Total de pedidos */}
+                              <div className="p-4 border border-border rounded-lg bg-card">
+                                <p className="text-sm text-foreground/60">Total de pedidos (filtro)</p>
+                                <p className="text-2xl font-light">{pedidosFiltrados.length}</p>
+                              </div>
+
+                              {/* Faturamento bruto (sem cancelados) */}
+                              <div className="p-4 border border-border rounded-lg bg-card">
+                                <p className="text-sm text-foreground/60">Faturamento (sem cancelados)</p>
+                                <p className="text-2xl font-light text-primary">
+                                  R${" "}
+                                  {pedidosFiltrados
+                                    .filter((p) => p.status !== "cancelado")
+                                    .reduce((acc, p) => acc + (p.total || 0), 0)
+                                    .toFixed(2)}
+                                </p>
+                              </div>
+
+                              {/* Pedidos cancelados */}
+                              <div className="p-4 border border-border rounded-lg bg-card">
+                                <p className="text-sm text-foreground/60">Pedidos cancelados</p>
+                                <p className="text-2xl font-light text-red-600">
+                                  {pedidosFiltrados.filter((p) => p.status === "cancelado").length}
+                                </p>
+                              </div>
+
+                              {/* Por status principais */}
+                              <div className="p-4 border border-border rounded-lg bg-card">
+                                <p className="text-sm text-foreground/60">Pendentes</p>
+                                <p className="text-2xl font-light">
+                                  {pedidosFiltrados.filter((p) => p.status === "pendente").length}
+                                </p>
+                              </div>
+                              <div className="p-4 border border-border rounded-lg bg-card">
+                                <p className="text-sm text-foreground/60">Preparando</p>
+                                <p className="text-2xl font-light">
+                                  {pedidosFiltrados.filter((p) => p.status === "preparando").length}
+                                </p>
+                              </div>
+                              <div className="p-4 border border-border rounded-lg bg-card">
+                                <p className="text-sm text-foreground/60">Entregues</p>
+                                <p className="text-2xl font-light">
+                                  {pedidosFiltrados.filter((p) => p.status === "entregue").length}
+                                </p>
+                              </div>
+                            </div>
+                          )
+                        })()}
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {pedidos.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Últimos pedidos</CardTitle>
+                      <CardDescription>Pedidos mais recentes com valor e status</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2 max-h-96 overflow-y-auto">
+                        {pedidos.slice(0, 20).map((pedido) => (
+                          <div
+                            key={pedido.id}
+                            className="p-3 border border-border rounded-lg flex justify-between items-start gap-4"
+                          >
+                            <div>
+                              <p className="font-medium text-sm">{pedido.nomeCliente}</p>
+                              <p className="text-xs text-foreground/60">ID: {pedido.id}</p>
+                              <p className="text-xs text-foreground/60">
+                                Total: R$ {pedido.total.toFixed(2)}
+                              </p>
+                            </div>
+                            <span
+                              className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                                pedido.status === "pendente"
+                                  ? "bg-yellow-100 text-yellow-800"
+                                  : pedido.status === "preparando"
+                                  ? "bg-blue-100 text-blue-800"
+                                  : pedido.status === "pronto"
+                                  ? "bg-green-100 text-green-800"
+                                  : pedido.status === "cancelado"
+                                  ? "bg-red-100 text-red-800"
+                                  : "bg-gray-100 text-gray-800"
+                              }`}
+                            >
+                              {pedido.status}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </TabsContent>
+            )}
           </Tabs>
         </div>
       </section>
