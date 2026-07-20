@@ -1,0 +1,221 @@
+// Schema do Hermes Marmitaria — desenhado do zero (greenfield) a partir de
+// docs/domain-model.md. Preços usam Decimal(10,2); itens de pedido guardam
+// snapshot de preço/nome no momento da compra (integridade financeira — ADR-0006).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────── Enums ───────────────────────────────
+
+enum Role {
+  OWNER
+  STAFF
+}
+
+enum Categoria {
+  PRATO
+  BEBIDA
+  DOCE
+}
+
+enum DiaSemana {
+  SEGUNDA
+  TERCA
+  QUARTA
+  QUINTA
+  SEXTA
+  SABADO
+  DOMINGO
+}
+
+enum TipoEntrega {
+  ENTREGA
+  RETIRADA
+}
+
+enum FormaPagamento {
+  DINHEIRO
+  PIX
+  CREDITO
+  DEBITO
+}
+
+enum StatusPedido {
+  PENDENTE
+  PREPARANDO
+  PRONTO
+  SAIU_ENTREGA
+  ENTREGUE
+  CANCELADO
+}
+
+// ─────────────────────────────── Auth ────────────────────────────────
+
+model User {
+  id        String   @id @default(uuid()) @db.Uuid
+  email     String   @unique
+  senhaHash String   @map("senha_hash")
+  nome      String
+  role      Role     @default(STAFF)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+// ───────────────────────────── Cardápio ──────────────────────────────
+
+model Prato {
+  id         String     @id @default(uuid()) @db.Uuid
+  nome       String
+  descricao  String?
+  imagemUrl  String?    @map("imagem_url")
+  categoria  Categoria  @default(PRATO)
+  precoBase  Decimal    @map("preco_base") @db.Decimal(10, 2)
+  ativo      Boolean    @default(true)
+  createdAt  DateTime   @default(now()) @map("created_at")
+  updatedAt  DateTime   @updatedAt @map("updated_at")
+
+  tamanhos        Tamanho[]
+  diasDisponiveis PratoDia[]
+  itensPedido     PedidoItem[]
+
+  @@index([categoria])
+  @@map("pratos")
+}
+
+model Tamanho {
+  id      String  @id @default(uuid()) @db.Uuid
+  pratoId String  @map("prato_id") @db.Uuid
+  nome    String // P, M, G
+  preco   Decimal @db.Decimal(10, 2)
+
+  prato Prato @relation(fields: [pratoId], references: [id], onDelete: Cascade)
+
+  @@map("tamanhos")
+}
+
+model Adicional {
+  id    String  @id @default(uuid()) @db.Uuid
+  nome  String
+  preco Decimal @db.Decimal(10, 2)
+  ativo Boolean @default(true)
+
+  itensPedido PedidoItemAdicional[]
+
+  @@map("adicionais")
+}
+
+model PratoDia {
+  id        String    @id @default(uuid()) @db.Uuid
+  pratoId   String    @map("prato_id") @db.Uuid
+  diaSemana DiaSemana @map("dia_semana")
+  ativo     Boolean   @default(true)
+
+  prato Prato @relation(fields: [pratoId], references: [id], onDelete: Cascade)
+
+  @@unique([pratoId, diaSemana])
+  @@map("prato_dia")
+}
+
+// ───────────────────────────── Entrega ───────────────────────────────
+
+model Frete {
+  id        String   @id @default(uuid()) @db.Uuid
+  regiao    String   @unique
+  valor     Decimal  @db.Decimal(10, 2)
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  pedidos Pedido[]
+
+  @@map("fretes")
+}
+
+model Horario {
+  id         String    @id @default(uuid()) @db.Uuid
+  diaSemana  DiaSemana @unique @map("dia_semana")
+  abertura   String // "HH:mm"
+  fechamento String // "HH:mm"
+  aberto     Boolean   @default(true)
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  @@map("horarios")
+}
+
+// ───────────────────────────── Clientes ──────────────────────────────
+
+model Cliente {
+  id        String   @id @default(uuid()) @db.Uuid
+  nome      String
+  telefone  String   @unique // normalizado (somente dígitos)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  pedidos Pedido[]
+
+  @@map("clientes")
+}
+
+// ────────────────────────────── Pedidos ──────────────────────────────
+
+model Pedido {
+  id             String         @id @default(uuid()) @db.Uuid
+  codigo         String         @unique // código legível (ex.: PED-2026-0001)
+  clienteId      String         @map("cliente_id") @db.Uuid
+  status         StatusPedido   @default(PENDENTE)
+  tipoEntrega    TipoEntrega    @map("tipo_entrega")
+  formaPagamento FormaPagamento @map("forma_pagamento")
+  freteId        String?        @map("frete_id") @db.Uuid
+  valorFrete     Decimal        @default(0) @map("valor_frete") @db.Decimal(10, 2)
+  subtotal       Decimal        @db.Decimal(10, 2)
+  total          Decimal        @db.Decimal(10, 2) // CALCULADO NO SERVIDOR
+  observacoes    String?
+  enderecoEntrega Json?         @map("endereco_entrega") // snapshot do endereço
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  cliente Cliente      @relation(fields: [clienteId], references: [id])
+  frete   Frete?       @relation(fields: [freteId], references: [id])
+  itens   PedidoItem[]
+
+  @@index([status])
+  @@index([clienteId])
+  @@index([createdAt])
+  @@map("pedidos")
+}
+
+model PedidoItem {
+  id            String  @id @default(uuid()) @db.Uuid
+  pedidoId      String  @map("pedido_id") @db.Uuid
+  pratoId       String? @map("prato_id") @db.Uuid // null se o prato for removido depois
+  nomePrato     String  @map("nome_prato") // snapshot
+  tamanhoNome   String? @map("tamanho_nome") // snapshot
+  precoUnitario Decimal @map("preco_unitario") @db.Decimal(10, 2) // snapshot
+  quantidade    Int
+  observacoes   String?
+
+  pedido     Pedido                @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  prato      Prato?                @relation(fields: [pratoId], references: [id], onDelete: SetNull)
+  adicionais PedidoItemAdicional[]
+
+  @@index([pedidoId])
+  @@map("pedido_itens")
+}
+
+model PedidoItemAdicional {
+  id           String  @id @default(uuid()) @db.Uuid
+  pedidoItemId String  @map("pedido_item_id") @db.Uuid
+  adicionalId  String? @map("adicional_id") @db.Uuid
+  nome         String // snapshot
+  preco        Decimal @db.Decimal(10, 2) // snapshot
+
+  pedidoItem PedidoItem @relation(fields: [pedidoItemId], references: [id], onDelete: Cascade)
+  adicional  Adicional? @relation(fields: [adicionalId], references: [id], onDelete: SetNull)
+
+  @@map("pedido_item_adicionais")
+}
