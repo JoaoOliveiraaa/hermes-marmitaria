@@ -5,8 +5,9 @@ export interface Prato {
   ingredientes: string[]
   tamanhos: Tamanho[] // adicionado suporte a múltiplos tamanhos
   preco: number // preço padrão (para compatibilidade)
-  imagem: string
-  categoria: "prato" | "bebida" | "doce" | "adicional"
+  imagem: string // view-model (mapeado de imagem_url)
+  imagem_url?: string | null // campo cru do banco, usado no admin
+  categoria: "prato" | "bebida" | "doce"
 }
 
 export interface Adicional {
