@@ -1,0 +1,32 @@
+{
+  "name": "@hermes/config",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@hermes/eslint-config": "workspace:*",
+    "@hermes/tsconfig": "workspace:*",
+    "@types/node": "^22",
+    "eslint": "^9.17.0",
+    "tsup": "^8.3.5",
+    "typescript": "^5"
+  }
+}

@@ -15,10 +15,15 @@ que "podem ou não existir").
 
 Usaremos **Prisma** como ORM na API NestJS, com **migrations versionadas** no repositório.
 
-Bootstrap: `prisma db pull` (introspect) do banco atual gera o `schema.prisma` inicial;
-a partir daí, uma migration baseline e todas as mudanças futuras via `prisma migrate`.
-Conexões: `POSTGRES_URL_NON_POOLING` para migrations, pooler (`POSTGRES_PRISMA_URL`)
-para runtime.
+Bootstrap (**greenfield**, decidido em 2026-07-20): em vez de introspectar o banco atual
+(que carrega o drift do V0), **redesenhamos o schema do zero** em `schema.prisma` a partir
+do [modelo de domínio](../domain-model.md). Desenvolvemos contra um **Postgres local em
+Docker** (`docker-compose`), iterando com `prisma migrate dev`. Quando o schema estiver
+maduro, provisionamos um **banco Supabase novo** e aplicamos as migrations com
+`prisma migrate deploy`.
+
+Conexões: `DATABASE_URL` (Docker local em dev; Supabase em prod). Em produção Supabase:
+`POSTGRES_URL_NON_POOLING` para migrations, pooler (`POSTGRES_PRISMA_URL`) para runtime.
 
 ## Consequências
 
